@@ -618,8 +618,8 @@ end
 
 		local sound = Instance.new("Sound")
 		sound.SoundId = ripperConfig.EndSoundId or "rbxassetid://4988621968"
-		sound.Volume = 10
-		sound.PlaybackSpeed = 0.7
+		sound.Volume = 7
+		sound.PlaybackSpeed = 0.6
 		sound.Parent = workspace
 		sound:Play()
 
