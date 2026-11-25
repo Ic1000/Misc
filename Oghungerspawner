@@ -128,7 +128,8 @@ local CONST = {
 						"rbxassetid://184251462",
 						"rbxassetid://236777652"
 					},
-					FlashDuration = 1.6
+					FlashDuration = 1.6,
+					FinalHealth = 0
 				}
 			},
 			Jumpscare = {
@@ -189,7 +190,7 @@ local CONST = {
 				Cause = ""
 			}
 		},
-		DEBUG = {
+				DEBUG = {
 			OnSpawned = function() end,
 			OnStartMoving = function() end,
 			OnReachedNode = function() end,
@@ -200,6 +201,7 @@ local CONST = {
 			OnDespawned = function() end,
 			OnDamagePlayer = function() end,
 			OnKillPlayer = function() end,
+			OnCrucified = function() end,
 			EndWhenGO = function() end,
 			PlayerGetSee = function() end,
 			CrucifixionOverwrite = nil,
@@ -498,7 +500,7 @@ local function PlayRipperJumpscare(entity: any)
 
 		SetAllParticlesTimeScale(entityModel, 0)
 
-		local function LoadGitAudioSound(url: string, filePrefix: string, volume: number, playbackSpeed: number): Sound?
+		local function GetGitSound(url: string, filePrefix: string, volume: number, playbackSpeed: number): Sound?
 	if typeof(url) ~= "string" or url == "" then
 		return nil
 	end
@@ -534,7 +536,7 @@ end
 		local Jumpscare
 		if ripperConfig.SoundUrl and ripperConfig.SoundUrl ~= "" then
 			pcall(function()
-				Jumpscare = LoadGitAudioSound(ripperConfig.SoundUrl, "Kill_Static")
+				Jumpscare = GetGitSound(ripperConfig.SoundUrl, "Kill_Static")
 			end)
 		end
 		if not Jumpscare then
@@ -546,7 +548,7 @@ end
 		Jumpscare.PlaybackSpeed = 1
 
 		local slamUrl = ripperConfig.SlamSoundUrl or ripperConfig.SlamSoundId or "rbxassetid://1837829565"
-local slam = LoadGitAudioSound(slamUrl, "Ripper_Slam_SFX", 10, 1)
+local slam = GetGitSound(slamUrl, "Ripper_Slam_SFX", 10, 1)
 if slam then
 	slam:Play()
 end
@@ -603,10 +605,7 @@ end
 		imageLabel.ImageTransparency = 1
 		task.wait(0)
 
-		to = false
-
-		if humanoid then humanoid.Health = 0 end
-		task.spawn(entity.RunCallback, entity, "OnKillPlayer")
+				to = false
 
 		local deathCause = config.Death.Cause ~= "" and config.Death.Cause or "Ripper"
 		pcall(function()
@@ -634,11 +633,21 @@ end
 			screenGui:Destroy()
 		end
 
-		if humanoid and humanoid.Health > 0 then
-			humanoid.WalkSpeed = originalWalkSpeed
-			humanoid.JumpPower = originalJumpPower
-			if controlsModule then
-				pcall(function() controlsModule:Enable() end)
+		if humanoid then
+			if typeof(ripperConfig.FinalHealth) == "number" then
+				humanoid.Health = math.clamp(ripperConfig.FinalHealth, 0, humanoid.MaxHealth)
+			elseif ripperConfig.FinalHealth == false or ripperConfig.FinalHealth == "Keep" then
+				-- Giữ nguyên máu hiện tại của người chơi
+			else
+				humanoid.Health = 0
+			end
+
+			if humanoid.Health > 0 then
+				humanoid.WalkSpeed = originalWalkSpeed
+				humanoid.JumpPower = originalJumpPower
+				if controlsModule then
+					pcall(function() controlsModule:Enable() end)
+				end
 			end
 		end
 	end)
@@ -777,7 +786,7 @@ local function PlayerHasItemEquipped(name: string): boolean
 		return true, tool
 	end
 	return false
-end
+end	
 
 local function CrucifixEntity(entity: any)
 	local model = entity.Model
@@ -1763,7 +1772,7 @@ Module.Run = function(self, entity: any, copyEntity: boolean, isReboundRespawn: 
 				end
 			end
 
-			local usedCrucifix = false
+						local usedCrucifix = false
 			do
 				local crucifixion = config.Crucifixion
 				if
@@ -1779,6 +1788,7 @@ Module.Run = function(self, entity: any, copyEntity: boolean, isReboundRespawn: 
 						else
 							tool:Destroy()
 							model:SetAttribute("Paused", true)
+							task.spawn(entity.RunCallback, entity, "OnCrucified")
 							CrucifixEntity(entity)
 						end
 						usedCrucifix = true
