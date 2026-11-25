@@ -52,6 +52,10 @@ local Storage = {
 	DeathTypes = {
 		["Yellow"] = {"yellow", "curious"},
 		["Blue"] = {"blue", "guiding"}
+	},
+	CrucifixTypes = {
+		["guiding"] = { Color = Color3.fromRGB(137, 207, 255) },
+		["curious"] = { Color = Color3.fromRGB(255, 227, 137) }
 	}
 }
 
@@ -548,7 +552,7 @@ end
 		Jumpscare.PlaybackSpeed = 1
 
 		local slamUrl = ripperConfig.SlamSoundUrl or ripperConfig.SlamSoundId or "rbxassetid://0"
-local slam = GetGitSound(slamUrl, "Ripper_Slam_SFX", 1, 1)
+local slam = GetGitSound(slamUrl, "Ripper_Slam_SFX", 10, 1)
 if slam then
 	slam:Play()
 end
@@ -780,19 +784,21 @@ local function FixRoomLights(room: Model)
 	end
 end
 
-local function PlayerHasItemEquipped(name: string): boolean
+local function HasEquipped(name: string): boolean
 	local tool = Character:FindFirstChildOfClass("Tool")
-	if tool and tool.Name == name then
+	if tool and (tool.Name == name or tool:HasTag(name)) then
 		return true, tool
 	end
 	return false
-end	
+end
 
 local function CrucifixEntity(entity: any)
 	local model = entity.Model
 	local config = entity.Config
+
 	local resist = config.Crucifixion.Resist
 
+	-- \\ Setup
 	local entityPivot = model:GetPivot()
 
 	local params = RaycastParams.new()
@@ -804,12 +810,10 @@ local function CrucifixEntity(entity: any)
 
 	model:SetAttribute("BeingBanished", true)
 
+	-- \\ Variables
 	local MainGame = Modules.Main_Game
 	local CamShaker = MainGame and MainGame.camShaker
-	local TheShake
-	if CamShaker then
-		TheShake = CamShaker:StartShake(5, 20, 2, Vector3.zero)
-	end
+	local TheShake = CamShaker and CamShaker:StartShake(5, 20, 2, Vector3.zero)
 
 	local Repentance = Assets.Repentance:Clone()
 	local Crucifix = Repentance.Crucifix
@@ -818,6 +822,7 @@ local function CrucifixEntity(entity: any)
 	local EntityPart = Repentance.Entity
 	local Sound = Handle[resist and "SoundFail" or "Sound"]
 
+	-- \\ Repentance setup
 	Repentance:PivotTo(CFrame.new(result.Position))
 	Crucifix:PivotTo(Character:GetPivot())
 	EntityPart.CFrame = entityPivot
@@ -848,11 +853,14 @@ local function CrucifixEntity(entity: any)
 		end
 	end
 
-	local Color = Color3.fromRGB(137, 207, 255)
+	-- \\ Set pentagram color
+	local typeKey = (config.Crucifixion and config.Crucifixion.Type and string.lower(config.Crucifixion.Type)) or "guiding"
+	local typeData = Storage.CrucifixTypes[typeKey] or Storage.CrucifixTypes.guiding
+	local Color = typeData.Color
 
 	for _, v in next, Repentance:QueryDescendants(".GiveMeColor") do
 		if v:IsA("Light") or v:IsA("BasePart") then
-			v.Color = Color	
+			v.Color = Color
 		elseif v:IsA("ParticleEmitter") or v:IsA("Beam") then
 			v.Color = ColorSequence.new({
 				ColorSequenceKeypoint.new(0, Color),
@@ -861,6 +869,7 @@ local function CrucifixEntity(entity: any)
 		end
 	end
 
+	-- \\ Lock entity model to EntityPart
 	task.spawn(function()
 		if not resist then
 			while EntityPart.Parent do
@@ -871,6 +880,7 @@ local function CrucifixEntity(entity: any)
 		end
 	end)
 
+	-- \\ Pentagram animation
 	TweenService:Create(
 		Pentagram.Circle,
 		TweenInfo.new(2, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
@@ -879,6 +889,7 @@ local function CrucifixEntity(entity: any)
 
 	task.delay(2, Pentagram.Circle.Destroy, Pentagram.Circle)
 
+	-- \\ Crucifix hover
 	Handle.BodyPosition.Position = (Character:GetPivot() * CFrame.new(1, 4, -6)).Position
 
 	TweenService:Create(
@@ -888,6 +899,7 @@ local function CrucifixEntity(entity: any)
 	):Play()
 
 	task.delay(3, function()
+		-- \\ Break off shards
 		for _, shard in next, Handle.Shards:GetChildren() do
 			shard.CollisionGroup = "NoPlayer"
 			shard.CanCollide = true
@@ -897,6 +909,7 @@ local function CrucifixEntity(entity: any)
 	end)
 
 	if not resist then
+		-- \\ Start raising entity
 		TweenService:Create(
 			EntityPart,
 			TweenInfo.new(3, Enum.EasingStyle.Elastic, Enum.EasingDirection.In),
@@ -904,6 +917,7 @@ local function CrucifixEntity(entity: any)
 		):Play()
 	end
 
+	-- \\ Ritual animation
 	task.spawn(function()
 		waitUntil(2.625)
 
@@ -930,6 +944,7 @@ local function CrucifixEntity(entity: any)
 		}):Play()
 
 		if not resist then
+			-- \\ Big light things
 			TweenService:Create(
 				Handle.Light,
 				TweenInfo.new(1, Enum.EasingStyle.Circular, Enum.EasingDirection.InOut),
@@ -947,15 +962,18 @@ local function CrucifixEntity(entity: any)
 		end
 	end)
 
+	-- \\ Crucifix actions
 	if not resist then
 		waitUntil(2.5)
 
+		-- \\ Lower entity
 		TweenService:Create(
 			EntityPart,
 			TweenInfo.new(3, Enum.EasingStyle.Back, Enum.EasingDirection.In),
 			{ CFrame = EntityPart.CFrame - Vector3.new(0, 50, 0) }
 		):Play()
 
+		-- \\ Mute entity sounds
 		for _, s in next, model:QueryDescendants("Sound") do
 			if s:GetAttribute("VolumeIgnore") then continue end
 
@@ -988,9 +1006,10 @@ local function CrucifixEntity(entity: any)
 
 		if TheShake then TheShake:StartFadeOut(3) end
 
+		-- \\ Fade pentagram to red
 		task.spawn(function()
 			local color = Instance.new("Color3Value")
-			color.Value = Color3.fromRGB(137, 207, 255)
+			color.Value = Color
 
 			local tween = TweenService:Create(
 				color,
@@ -1017,6 +1036,7 @@ local function CrucifixEntity(entity: any)
 		waitUntil(9.625)
 	end
 
+	-- \\ Crucifix glow explode
 	TweenService:Create(
 		Handle.Glow,
 		TweenInfo.new(1),
@@ -1773,29 +1793,28 @@ Module.Run = function(self, entity: any, copyEntity: boolean, isReboundRespawn: 
 			end
 
 						local usedCrucifix = false
-			do
-				local crucifixion = config.Crucifixion
-				if
-					crucifixion.Enabled
-					and crucifixion.Range > 0
-					and (charOrigin - origin).Magnitude <= crucifixion.Range
-					and inSight
-				then
-					local hasTool, tool = PlayerHasItemEquipped("Crucifix")
-					if hasTool and tool and not model:GetAttribute("BeingBanished") then
-						if typeof(debug.CrucifixionOverwrite) == "function" then
-							entity:RunCallback("CrucifixionOverwrite")
-						else
-							tool:Destroy()
-							model:SetAttribute("Paused", true)
-							task.spawn(entity.RunCallback, entity, "OnCrucified")
-							CrucifixEntity(entity)
-						end
-						usedCrucifix = true
-					end
-				end
+do
+	local crucifixion = config.Crucifixion
+	if
+		crucifixion.Enabled
+		and crucifixion.Range > 0
+		and (charOrigin - origin).Magnitude <= crucifixion.Range
+		and inSight
+	then
+		local hasTool, tool = HasEquipped("Crucifix")
+		if hasTool and tool and not model:GetAttribute("BeingBanished") then
+			if typeof(debug.CrucifixionOverwrite) == "function" then
+				entity:RunCallback("CrucifixionOverwrite")
+			else
+				tool:Destroy()
+				model:SetAttribute("Paused", true)
+				task.spawn(entity.RunCallback, entity, "OnCrucified")
+				CrucifixEntity(entity)
 			end
-
+			usedCrucifix = true
+		end
+	end
+end
 			if
 				not model:GetAttribute("Paused")
 				and not usedCrucifix
