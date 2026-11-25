@@ -548,7 +548,7 @@ end
 		Jumpscare.PlaybackSpeed = 1
 
 		local slamUrl = ripperConfig.SlamSoundUrl or ripperConfig.SlamSoundId or "rbxassetid://0"
-local slam = GetGitSound(slamUrl, "Ripper_Slam_SFX", 10, 1)
+local slam = GetGitSound(slamUrl, "Ripper_Slam_SFX", 1, 1)
 if slam then
 	slam:Play()
 end
