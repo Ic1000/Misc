@@ -120,8 +120,8 @@ local CONST = {
 					ParticleName = "ParticleEmitter",
 					ParticleTexture = "rbxassetid://12737595583",
 					SoundUrl = "https://github.com/eoyoustme/back/raw/main/Kill_with_static.mp3",
-					SlamSoundId = "rbxassetid://1837829565",
-					EndSoundId = "rbxassetid://4988621968",
+					SlamSoundId = "rbxassetid://0",
+					EndSoundId = "rbxassetid://0",
 					Images = {
 						"rbxassetid://8482795900",
 						"rbxassetid://236542974",
@@ -547,7 +547,7 @@ end
 		Jumpscare.Volume = 1
 		Jumpscare.PlaybackSpeed = 1
 
-		local slamUrl = ripperConfig.SlamSoundUrl or ripperConfig.SlamSoundId or "rbxassetid://1837829565"
+		local slamUrl = ripperConfig.SlamSoundUrl or ripperConfig.SlamSoundId or "rbxassetid://0"
 local slam = GetGitSound(slamUrl, "Ripper_Slam_SFX", 10, 1)
 if slam then
 	slam:Play()
